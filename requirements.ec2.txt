@@ -16,9 +16,6 @@ trl==0.8.6
 datasets==2.19.0
 accelerate==0.29.3
 
-# ---------- Embeddings ----------
-sentence-transformers==2.7.0
-fastembed==0.2.7
 
 # ---------- Evaluation ----------
 evaluate==0.4.1
