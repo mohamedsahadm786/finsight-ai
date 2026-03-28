@@ -1,0 +1,24 @@
+# ============================================
+# FinSight AI — EC2 / Production Dependencies
+# ============================================
+# Install on EC2 and inside Celery worker Docker container ONLY.
+# These are the heavy ML libraries that need GPU/high RAM.
+# Install WITH the base file: pip install -r requirements.txt -r requirements.ec2.txt
+
+# ---------- PyTorch ----------
+torch==2.2.0
+
+# ---------- Transformers & Fine-tuning ----------
+transformers==4.40.0
+peft==0.10.0
+bitsandbytes==0.43.0
+trl==0.8.6
+datasets==2.19.0
+accelerate==0.29.3
+
+# ---------- Embeddings ----------
+sentence-transformers==2.7.0
+fastembed==0.2.7
+
+# ---------- Evaluation ----------
+evaluate==0.4.1
