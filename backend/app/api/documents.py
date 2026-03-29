@@ -19,6 +19,7 @@ from backend.app.middleware.tenant import get_tenant_id
 from backend.app.models.document import Document
 from backend.app.models.processing_job import ProcessingJob
 from backend.app.models.user import User
+from backend.tasks.document_tasks import process_document
 from backend.app.schemas.document import (
     DocumentDetail,
     DocumentListResponse,
@@ -114,10 +115,10 @@ async def upload_document(
 
     await db.commit()
 
-    # Step 5: Queue Celery task (mocked for now — real in Phase 6)
-    # In Phase 6, this will be:
-    # from backend.tasks.document_tasks import process_document
-    # process_document.delay(str(document_id), str(tenant_id), str(job_id))
+    # Step 5: Queue Celery task for async processing
+    celery_task = process_document.delay(
+        str(document_id), str(tenant_id), str(job_id)
+    )
 
     return DocumentUploadResponse(
         document_id=document_id,

@@ -34,3 +34,23 @@ async def get_db() -> AsyncSession:
             raise
         finally:
             await session.close()
+
+
+# ============================================================
+# SYNC engine + session (used by Celery worker tasks)
+# ============================================================
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+
+sync_engine = create_engine(
+    settings.DATABASE_URL_SYNC,
+    pool_size=5,
+    max_overflow=3,
+    pool_pre_ping=True,
+    echo=False,
+)
+
+SyncSessionLocal = sessionmaker(
+    bind=sync_engine,
+    expire_on_commit=False,
+)
