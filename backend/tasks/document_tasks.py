@@ -1,4 +1,3 @@
-import time
 import json
 import logging
 from datetime import datetime, timezone
@@ -9,11 +8,6 @@ from backend.app.config import get_settings
 from backend.app.database.session import SyncSessionLocal
 from backend.app.models.processing_job import ProcessingJob
 from backend.app.models.document import Document
-from backend.app.models.extracted_ratio import ExtractedRatio
-from backend.app.models.sentiment_result import SentimentResult
-from backend.app.models.breach_result import BreachResult
-from backend.app.models.risk_score import RiskScore
-from backend.app.models.report import Report
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -24,150 +18,43 @@ def _get_dlq_redis():
     return redis_lib.Redis.from_url(settings.redis_url(db=1), decode_responses=True)
 
 
-def _mock_langgraph_pipeline(document_id: str, tenant_id: str, job_id: str, db):
+def _run_langgraph_pipeline(document_id: str, tenant_id: str, job_id: str):
     """
-    MOCK LangGraph pipeline — replaces real agent execution during local development.
-    Simulates all 6 agents with hardcoded outputs and short sleeps.
-    Will be replaced with real graph.invoke() in Phase 7.
+    Run the real LangGraph pipeline with all 6 agents.
+
+    Each agent handles its own database writes via SyncSessionLocal.
+    The graph passes a shared state dict through all agents.
+    Agents use mock functions when USE_REAL_LLAMA=false (local dev)
+    and real models when USE_REAL_LLAMA=true (EC2).
     """
-    job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()
+    from backend.agents.graph import pipeline_graph
 
-    # --- Agent 1: Document Parser ---
-    job.current_agent = "Document Parser"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 1: Document Parser — parsing and indexing...")
-    time.sleep(1)
+    initial_state = {
+        "document_id": document_id,
+        "tenant_id": tenant_id,
+        "job_id": job_id,
+        "chunks": [],
+        "chunk_metadata": [],
+        "chunk_ids": [],
+        "extracted_ratios": {},
+        "ratios_found_count": 0,
+        "raw_extraction": {},
+        "sentiment_result": {},
+        "breach_result": {},
+        "risk_score": {},
+        "final_report": {},
+        "errors": [],
+    }
 
-    # --- Agent 2: Financial Ratio Extractor ---
-    job.current_agent = "Financial Ratio Extractor"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 2: Financial Ratio Extractor — extracting ratios...")
-    time.sleep(1)
+    logger.info(f"[Job {job_id}] Invoking LangGraph pipeline...")
+    result = pipeline_graph.invoke(initial_state)
 
-    extracted_ratio = ExtractedRatio(
-        document_id=document_id,
-        job_id=job_id,
-        dscr=1.34,
-        leverage_ratio=4.8,
-        interest_coverage=3.2,
-        current_ratio=0.92,
-        net_profit_margin=0.08,
-        ratios_found_count=5,
-        raw_extraction={"mock": True, "source": "hardcoded_values"},
-    )
-    db.add(extracted_ratio)
-    db.commit()
+    # Check for errors accumulated during the pipeline
+    errors = result.get("errors", [])
+    if errors:
+        logger.warning(f"[Job {job_id}] Pipeline completed with errors: {errors}")
 
-    # --- Agent 3: Sentiment Analyst ---
-    job.current_agent = "Sentiment Analyst"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 3: Sentiment Analyst — classifying sentiment...")
-    time.sleep(0.5)
-
-    sentiment_result = SentimentResult(
-        document_id=document_id,
-        job_id=job_id,
-        overall_sentiment="neutral",
-        positive_count=42,
-        neutral_count=85,
-        negative_count=23,
-        confidence_score=0.72,
-        flagged_sentences=[
-            {
-                "text": "The company's debt obligations have increased significantly.",
-                "score": -0.89,
-                "page_number": 14,
-            },
-            {
-                "text": "Revenue declined for the third consecutive quarter.",
-                "score": -0.82,
-                "page_number": 27,
-            },
-        ],
-    )
-    db.add(sentiment_result)
-    db.commit()
-
-    # --- Agent 4: Breach Detector ---
-    job.current_agent = "Breach Detector"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 4: Breach Detector — scanning for covenant breaches...")
-    time.sleep(0.5)
-
-    breach_result = BreachResult(
-        document_id=document_id,
-        job_id=job_id,
-        breach_detected=True,
-        breach_count=1,
-        breach_details=[
-            {
-                "clause": "Section 7.1(a)",
-                "text": "The Debt Service Coverage Ratio fell below the minimum threshold of 1.20x.",
-                "confidence": 0.94,
-                "page_number": 45,
-            }
-        ],
-    )
-    db.add(breach_result)
-    db.commit()
-
-    # --- Agent 5: Risk Scorer ---
-    job.current_agent = "Risk Scorer"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 5: Risk Scorer — computing XGBoost risk score...")
-    time.sleep(0.5)
-
-    risk_score = RiskScore(
-        document_id=document_id,
-        job_id=job_id,
-        risk_score=0.62,
-        risk_tier="high",
-        ratios_used_count=5,
-        imputed_features={},
-        shap_values={
-            "dscr": -0.12,
-            "leverage_ratio": 0.25,
-            "interest_coverage": -0.08,
-            "current_ratio": 0.18,
-            "net_profit_margin": -0.05,
-        },
-        score_reliability="high",
-    )
-    db.add(risk_score)
-    db.commit()
-
-    # --- Agent 6: Report Writer ---
-    job.current_agent = "Report Writer"
-    db.commit()
-    logger.info(f"[Job {job_id}] Agent 6: Report Writer — generating final report...")
-    time.sleep(0.5)
-
-    report = Report(
-        document_id=document_id,
-        job_id=job_id,
-        tenant_id=tenant_id,
-        summary_text=(
-            "Based on the analysis of the uploaded financial document, the company presents "
-            "a HIGH risk profile. The Debt Service Coverage Ratio of 1.34x is above the minimum "
-            "covenant threshold but leaves limited headroom. The leverage ratio of 4.8x indicates "
-            "significant debt burden. One covenant breach was detected in Section 7.1(a). "
-            "Overall document sentiment is neutral with notable negative language around debt "
-            "obligations and declining revenue. Recommend enhanced monitoring and quarterly review."
-        ),
-        overall_risk_tier="high",
-        key_findings=[
-            "DSCR of 1.34x — above 1.20x minimum but limited headroom",
-            "Leverage ratio of 4.8x — elevated debt burden",
-            "One covenant breach detected (Section 7.1(a))",
-            "Neutral overall sentiment with negative flags on debt and revenue",
-            "XGBoost risk score: 0.62 (HIGH tier)",
-        ],
-        llm_tokens_used=0,
-    )
-    db.add(report)
-    db.commit()
-
-    logger.info(f"[Job {job_id}] All 6 agents completed successfully.")
+    return result
 
 
 @celery_app.task(
@@ -198,8 +85,8 @@ def process_document(self, document_id: str, tenant_id: str, job_id: str):
         db.commit()
         logger.info(f"[Job {job_id}] Started processing document {document_id}")
 
-        # --- Run the pipeline (mocked for now) ---
-        _mock_langgraph_pipeline(document_id, tenant_id, job_id, db)
+        # --- Run the LangGraph pipeline ---
+        _run_langgraph_pipeline(document_id, tenant_id, job_id)
 
         # --- Mark job as completed ---
         job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()
