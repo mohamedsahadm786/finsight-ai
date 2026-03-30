@@ -20,6 +20,7 @@ from backend.app.models.chat_message import ChatMessage
 from backend.app.models.chat_session import ChatSession
 from backend.app.models.document import Document
 from backend.app.models.user import User
+from backend.app.services.rag_service import run_rag_pipeline
 from backend.app.schemas.chat import (
     ChatHistoryResponse,
     ChatMessageSchema,
@@ -45,7 +46,7 @@ async def ask_question(
     1. Validate the document exists and belongs to the user's tenant
     2. Get or create a chat session
     3. Save the user's question
-    4. Run the RAG pipeline (MOCKED for now — real in Phase 8):
+    4. Run the hybrid RAG pipeline:
        HyDE → hybrid search → RRF → cross-encoder → LLaMA generation
     5. Save the assistant's answer with citation chunk IDs
     6. Return the answer
@@ -100,24 +101,13 @@ async def ask_question(
     )
     db.add(user_message)
 
-    # Step 4: MOCK RAG pipeline (real implementation in Phase 8)
-    # In Phase 8, this will call:
-    #   from backend.app.services.rag_service import run_rag_pipeline
-    #   answer, chunk_ids, faithfulness = await run_rag_pipeline(
-    #       question=request.question,
-    #       document_id=request.document_id,
-    #       tenant_id=tenant_id,
-    #   )
-    mock_answer = (
-        f"[MOCK RAG RESPONSE] Based on the document analysis, "
-        f"your question '{request.question[:50]}...' relates to the "
-        f"financial data in the uploaded document. In Phase 8, this "
-        f"will be replaced with a real hybrid RAG pipeline using "
-        f"HyDE, dense+sparse search, RRF fusion, cross-encoder "
-        f"re-ranking, and LLaMA generation."
+    # Step 4: Run the real hybrid RAG pipeline
+    # HyDE → hybrid search → RRF fusion → cross-encoder → generation
+    rag_answer, chunk_ids, faithfulness_score, tokens_used = await run_rag_pipeline(
+        question=request.question,
+        document_id=str(request.document_id),
+        tenant_id=str(tenant_id),
     )
-    mock_chunk_ids = ["mock-chunk-1", "mock-chunk-2", "mock-chunk-3"]
-    mock_faithfulness = 0.92
 
     # Step 5: Save assistant's answer
     latency_ms = int((time.time() - start_time) * 1000)
@@ -125,10 +115,10 @@ async def ask_question(
         id=uuid4(),
         session_id=session.id,
         role="assistant",
-        content=mock_answer,
-        retrieved_chunk_ids=mock_chunk_ids,
-        ragas_faithfulness=mock_faithfulness,
-        tokens_used=150,  # Mock token count
+        content=rag_answer,
+        retrieved_chunk_ids=chunk_ids,
+        ragas_faithfulness=faithfulness_score,
+        tokens_used=tokens_used,
         latency_ms=latency_ms,
     )
     db.add(assistant_message)
@@ -139,10 +129,10 @@ async def ask_question(
     return ChatResponse(
         session_id=session.id,
         message_id=assistant_message.id,
-        answer=mock_answer,
-        retrieved_chunk_ids=mock_chunk_ids,
-        ragas_faithfulness=mock_faithfulness,
-        tokens_used=150,
+        answer=rag_answer,
+        retrieved_chunk_ids=chunk_ids,
+        ragas_faithfulness=faithfulness_score,
+        tokens_used=tokens_used,
         latency_ms=latency_ms,
     )
 
@@ -188,4 +178,4 @@ async def get_chat_history(
         session_id=session.id,
         document_id=session.document_id,
         messages=[ChatMessageSchema.model_validate(m) for m in messages],
-    )
+    )                                                                                               
