@@ -18,6 +18,7 @@ Target ratios:
 
 import json
 import logging
+import time
 from typing import Any
 
 from backend.app.config import get_settings
@@ -185,6 +186,8 @@ def agent_2_extractor(state: dict[str, Any]) -> dict[str, Any]:
     job_id = state["job_id"]
     chunks = state.get("chunks", [])
 
+    start_time = time.time()
+
     db = SyncSessionLocal()
     try:
         # --- Update job status ---
@@ -243,3 +246,6 @@ def agent_2_extractor(state: dict[str, Any]) -> dict[str, Any]:
 
     finally:
         db.close()
+        duration = time.time() - start_time
+        from backend.app.core.metrics import agent_duration
+        agent_duration.labels(agent="extractor").observe(duration)

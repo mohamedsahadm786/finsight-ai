@@ -11,6 +11,7 @@ Sparse vectors:   fastembed BM25 — lightweight, runs locally for real.
 """
 
 import logging
+import time
 import uuid
 from typing import Any
 
@@ -241,6 +242,8 @@ def agent_1_parser(state: dict[str, Any]) -> dict[str, Any]:
     tenant_id = state["tenant_id"]
     job_id = state["job_id"]
 
+    start_time = time.time()
+
     db = SyncSessionLocal()
     try:
         # --- Update job status ---
@@ -397,3 +400,6 @@ def agent_1_parser(state: dict[str, Any]) -> dict[str, Any]:
 
     finally:
         db.close()
+        duration = time.time() - start_time
+        from backend.app.core.metrics import agent_duration
+        agent_duration.labels(agent="parser").observe(duration)

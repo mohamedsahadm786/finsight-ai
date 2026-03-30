@@ -11,6 +11,7 @@ a professional credit analyst report narrative.
 """
 
 import logging
+import time
 from typing import Any
 
 from backend.app.config import get_settings
@@ -193,6 +194,8 @@ def agent_6_report_writer(state: dict[str, Any]) -> dict[str, Any]:
     breach_result = state.get("breach_result", {})
     risk_score_data = state.get("risk_score", {})
 
+    start_time = time.time()
+
     db = SyncSessionLocal()
     try:
         # --- Update job status ---
@@ -245,3 +248,6 @@ def agent_6_report_writer(state: dict[str, Any]) -> dict[str, Any]:
 
     finally:
         db.close()
+        duration = time.time() - start_time
+        from backend.app.core.metrics import agent_duration
+        agent_duration.labels(agent="report_writer").observe(duration)

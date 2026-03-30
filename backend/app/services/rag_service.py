@@ -168,6 +168,14 @@ async def run_rag_pipeline(
     except Exception as e:
         logger.warning(f"RAGAS evaluation failed: {e}")
 
+    # ── Record faithfulness in Prometheus ─────────────────────────
+    if faithfulness_score is not None:
+        try:
+            from backend.app.core.metrics import rag_faithfulness
+            rag_faithfulness.set(faithfulness_score)
+        except Exception:
+            pass
+
     logger.info(
         f"RAG pipeline complete — answer: {len(answer)} chars, "
         f"chunks: {len(chunk_ids)}, faithfulness: {faithfulness_score}, "

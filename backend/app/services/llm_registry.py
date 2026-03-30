@@ -162,6 +162,12 @@ class LLMRegistry:
             )
             db.add(usage)
             db.commit()
+            # Record in Prometheus
+            try:
+                from backend.app.core.metrics import llm_tokens_total
+                llm_tokens_total.labels(model=model_name).inc(input_tokens + output_tokens)
+            except Exception:
+                pass
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to log token usage: {e}")

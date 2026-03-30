@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from datetime import datetime, timezone
 
 import redis as redis_lib
@@ -86,7 +87,17 @@ def process_document(self, document_id: str, tenant_id: str, job_id: str):
         logger.info(f"[Job {job_id}] Started processing document {document_id}")
 
         # --- Run the LangGraph pipeline ---
+        pipeline_start = time.time()
         _run_langgraph_pipeline(document_id, tenant_id, job_id)
+        pipeline_duration = time.time() - pipeline_start
+
+        # Record total pipeline duration in Prometheus
+        try:
+            from backend.app.core.metrics import document_processing_duration
+            document_processing_duration.observe(pipeline_duration)
+        except Exception:
+            pass
+
 
         # --- Mark job as completed ---
         job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()

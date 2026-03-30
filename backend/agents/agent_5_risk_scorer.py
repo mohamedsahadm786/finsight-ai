@@ -17,6 +17,7 @@ Tier thresholds:
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -105,6 +106,8 @@ def agent_5_risk_scorer(state: dict[str, Any]) -> dict[str, Any]:
     job_id = state["job_id"]
     extracted_ratios = state.get("extracted_ratios", {})
     ratios_found_count = state.get("ratios_found_count", 0)
+
+    start_time = time.time()
 
     db = SyncSessionLocal()
     try:
@@ -227,6 +230,13 @@ def agent_5_risk_scorer(state: dict[str, Any]) -> dict[str, Any]:
         db.add(risk_db)
         db.commit()
 
+        # Record risk tier in Prometheus
+        try:
+            from backend.app.core.metrics import risk_tier_total
+            risk_tier_total.labels(tier=risk_tier).inc()
+        except Exception:
+            pass
+
         logger.info(
             f"[Job {job_id}] Agent 5 complete: "
             f"score={round(probability, 4)}, tier={risk_tier}, "
@@ -243,3 +253,6 @@ def agent_5_risk_scorer(state: dict[str, Any]) -> dict[str, Any]:
 
     finally:
         db.close()
+        duration = time.time() - start_time
+        from backend.app.core.metrics import agent_duration
+        agent_duration.labels(agent="risk_scorer").observe(duration)

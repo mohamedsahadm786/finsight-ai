@@ -59,3 +59,26 @@ risk_tier_total = Counter(
     "Count of documents by predicted risk tier",
     ["tier"],  # Label: low, medium, high, distress
 )
+
+# ── Queue Depth Updater ─────────────────────────────────────────
+
+def update_queue_depth() -> None:
+    """
+    Check Redis DB 0 (Celery broker) for the number of waiting tasks
+    and update the Prometheus gauge.
+
+    Called periodically by a background task in main.py.
+    """
+    try:
+        import redis as redis_lib
+        from backend.app.config import get_settings
+
+        settings = get_settings()
+        r = redis_lib.Redis.from_url(settings.redis_url(db=0), decode_responses=True)
+
+        # Celery stores tasks in a list named 'celery'
+        depth = r.llen("celery")
+        queue_depth.set(depth)
+    except Exception:
+        # If Redis is unavailable, don't crash — just skip this update
+        pass

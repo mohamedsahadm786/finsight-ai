@@ -19,7 +19,7 @@ Then visit:
 """
 
 from contextlib import asynccontextmanager
-
+import asyncio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -68,7 +68,23 @@ async def lifespan(app: FastAPI):
     print(f"  Swagger UI: http://localhost:8000/docs")
     print(f"  ReDoc:      http://localhost:8000/redoc")
 
+    # Start background task to update queue depth metric every 15 seconds
+    async def _queue_depth_updater():
+        while True:
+            try:
+                from backend.app.core.metrics import update_queue_depth
+                update_queue_depth()
+            except Exception:
+                pass
+            await asyncio.sleep(15)
+
+    queue_task = asyncio.create_task(_queue_depth_updater())
+
     yield  # App is now running and serving requests
+
+    # Cancel background task on shutdown
+    queue_task.cancel()
+
 
     # ── SHUTDOWN ──
     print("Shutting down FinSight AI...")
