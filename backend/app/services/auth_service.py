@@ -469,7 +469,9 @@ async def login_superadmin(email: str, password: str, db: AsyncSession) -> dict:
         raise AuthenticationError("Invalid email or password")
 
     # Update last login
-    sa.last_login_at = datetime.now(timezone.utc)
+    sa.last_login_at = datetime.now(timezone.utc)  
+
+
 
     # Issue tokens with superadmin privileges
     access_token = create_access_token(

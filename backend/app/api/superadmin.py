@@ -59,6 +59,9 @@ async def list_tenants(
     )
     tenants = result.scalars().all()
 
+    # Get current year-month string for token lookup
+    current_ym = datetime.now(timezone.utc).strftime("%Y-%m")
+
     tenant_summaries = []
     for tenant in tenants:
         # Count users for this tenant
@@ -73,6 +76,16 @@ async def list_tenants(
         )
         doc_count = doc_count_result.scalar()
 
+        # Get token usage for current month from pre-aggregated table
+        usage_result = await db.execute(
+            select(MonthlyUsageSummary).where(
+                MonthlyUsageSummary.tenant_id == tenant.id,
+                MonthlyUsageSummary.year_month == current_ym,
+            )
+        )
+        usage = usage_result.scalar_one_or_none()
+        tokens_this_month = int(usage.total_tokens) if usage else 0
+
         tenant_summaries.append(
             TenantSummary(
                 id=tenant.id,
@@ -82,10 +95,11 @@ async def list_tenants(
                 plan_tier=tenant.plan_tier,
                 user_count=user_count,
                 document_count=doc_count,
-                total_tokens_this_month=0,  # Populated in Phase 10
+                total_tokens_this_month=tokens_this_month,
                 created_at=tenant.created_at,
             )
         )
+
 
     return TenantListResponse(
         tenants=tenant_summaries,

@@ -45,6 +45,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ── JWT Token Creation ────────────────────────────────────────────
 
+
+
 def create_access_token(
     user_id: str,
     tenant_id: str | None = None,
