@@ -131,6 +131,18 @@ async def invite_user(
     db.add(new_user)
     await db.commit()
 
+    # Send invitation email (non-blocking — don't fail if email fails)
+    try:
+        from backend.app.services.email_service import send_user_invitation_email
+        await send_user_invitation_email(
+            to_email=request.email,
+            full_name=request.full_name,
+            tenant_name="Your Company",  # Simplified for now
+            temporary_password=request.temporary_password,
+        )
+    except Exception as e:
+        print(f"Warning: Failed to send invitation email: {e}")
+
     return InviteUserResponse(
         id=new_user.id,
         email=new_user.email,

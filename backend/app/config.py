@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     MAIL_FROM: str = "noreply@finsight.ai"
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_PORT: int = 587
+    MAIL_TLS: bool = True
+    MAIL_SSL: bool = False
 
     # ── AWS ───────────────────────────────────────────────
     AWS_ACCESS_KEY_ID: str = ""

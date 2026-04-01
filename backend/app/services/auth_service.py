@@ -379,8 +379,13 @@ async def request_password_reset(email: str, db: AsyncSession) -> str | None:
     db.add(reset_record)
     await db.commit()
 
-    # Step 4: Return raw token (email it in production)
+    # Step 4: Send the reset email
+    from backend.app.services.email_service import send_password_reset_email
+    email_sent = await send_password_reset_email(to_email=user.email, reset_token=raw_token)
+
+    # Return the raw token (for development testing — remove in production)
     return raw_token
+
 
 
 # ── Reset Password ────────────────────────────────────────────────

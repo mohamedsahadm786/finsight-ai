@@ -106,7 +106,7 @@ async def get_report(
     """
     tenant_id = get_tenant_id(current_user)
 
-    # Get the report
+    # Try lookup by report ID first, then fall back to document_id
     result = await db.execute(
         select(Report).where(
             Report.id == report_id,
@@ -116,7 +116,19 @@ async def get_report(
     report = result.scalar_one_or_none()
 
     if not report:
+        # Fall back: treat the UUID as a document_id
+        result = await db.execute(
+            select(Report).where(
+                Report.document_id == report_id,
+                Report.tenant_id == tenant_id,
+            )
+        )
+        report = result.scalar_one_or_none()
+
+    if not report:
         raise NotFoundError("Report", str(report_id))
+
+
 
     # Get associated agent outputs using document_id
     doc_id = report.document_id
