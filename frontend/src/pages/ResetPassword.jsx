@@ -97,21 +97,7 @@ export default function ResetPassword() {
                 </AnimatePresence>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Token field */}
-                  <div>
-                    <label className="font-body text-ink-secondary text-xs tracking-widest uppercase mb-2 block">
-                      Reset Token
-                    </label>
-                    <input
-                      type="text"
-                      name="token"
-                      value={form.token}
-                      onChange={handleChange}
-                      required
-                      placeholder="Paste your reset token here"
-                      className="w-full bg-void/60 border border-ink-muted/30 rounded-lg px-4 py-3 font-mono text-electric-light placeholder-ink-muted focus:outline-none focus:border-crimson focus:shadow-crimson transition-all duration-300 text-xs"
-                    />
-                  </div>
+
 
                   {/* New password */}
                   <div>

@@ -15,7 +15,7 @@ function Sidebar({ user, onLogout }) {
   const navItems = [
     { icon: Activity, label: 'Dashboard', path: '/dashboard', active: true },
     { icon: Upload, label: 'Upload', path: '/upload' },
-    { icon: FileText, label: 'Reports', path: '/dashboard#reports' },
+   
     ...(user?.role === 'admin' ? [{ icon: Shield, label: 'Admin', path: '/admin' }] : []),
     ...(user?.role === 'superadmin' ? [{ icon: Database, label: 'Superadmin', path: '/superadmin' }] : []),
   ]
