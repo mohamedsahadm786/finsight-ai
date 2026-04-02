@@ -1,0 +1,35 @@
+# ── FinSight AI — Celery Worker Container ────────────────────────
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch FIRST (avoids 1.5GB+ NVIDIA GPU downloads)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_sm
+
+# Copy backend source code
+COPY backend/ ./backend/
+
+# Copy model artifacts
+COPY models/ ./models/
+
+# Copy scripts
+COPY scripts/ ./scripts/
+
+CMD ["celery", "-A", "backend.tasks.celery_app", "worker", \
+     "--loglevel=info", \
+     "--concurrency=1", \
+     "--pool=solo"]

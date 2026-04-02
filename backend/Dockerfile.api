@@ -1,0 +1,42 @@
+# ── FinSight AI — FastAPI Application Container ──────────────────
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch FIRST (avoids 1.5GB+ NVIDIA GPU downloads)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_sm
+
+# Copy backend source code
+COPY backend/ ./backend/
+
+# Copy model artifacts
+COPY models/ ./models/
+
+# Copy scripts
+COPY scripts/ ./scripts/
+
+# Copy Alembic config
+COPY backend/alembic.ini ./backend/alembic.ini
+
+EXPOSE 8000
+
+CMD ["gunicorn", "backend.app.main:app", \
+     "-w", "2", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "300", \
+     "--graceful-timeout", "30"]

@@ -1,0 +1,275 @@
+# ── FinSight AI — Full Production Docker Compose ─────────────────
+# All 10 containers in one file.
+# Usage:
+#   docker-compose build
+#   docker-compose up -d
+#   docker-compose logs -f
+
+services:
+  # ═══════════════════════════════════════════════════════════════
+  #  1. NGINX — Reverse Proxy + Static File Server
+  # ═══════════════════════════════════════════════════════════════
+  nginx:
+    image: nginx:alpine
+    container_name: finsight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  2. FASTAPI — Backend API Server
+  # ═══════════════════════════════════════════════════════════════
+  fastapi:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.api
+    container_name: finsight-api
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - USE_REAL_LLAMA=${USE_REAL_LLAMA:-false}
+      - FRONTEND_URL=http://localhost
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-finsight}
+      - POSTGRES_USER=${POSTGRES_USER:-finsight_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=${MINIO_BUCKET:-finsight-documents}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-finsight-ai}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-noreply@finsight.ai}
+      - MAIL_SERVER=${MAIL_SERVER:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_TLS=${MAIL_TLS:-True}
+      - MAIL_SSL=${MAIL_SSL:-False}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  3. CELERY WORKER — Async Document Processing
+  # ═══════════════════════════════════════════════════════════════
+  celery_worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    container_name: finsight-worker
+    restart: unless-stopped
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY}
+      - USE_REAL_LLAMA=${USE_REAL_LLAMA:-false}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-finsight}
+      - POSTGRES_USER=${POSTGRES_USER:-finsight_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=${MINIO_BUCKET:-finsight-documents}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  4. REDIS — Queue Broker + Cache + JWT Blacklist
+  # ═══════════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    container_name: finsight-redis-prod
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  5. POSTGRESQL — Relational Database
+  # ═══════════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: finsight-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finsight_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-finsight}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finsight_user} -d ${POSTGRES_DB:-finsight}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  6. QDRANT — Vector Database
+  # ═══════════════════════════════════════════════════════════════
+  qdrant:
+    image: qdrant/qdrant:v1.9.1
+    container_name: finsight-qdrant-prod
+    restart: unless-stopped
+    volumes:
+      - qdrant_data_prod:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  7. MINIO — PDF Object Storage
+  # ═══════════════════════════════════════════════════════════════
+  minio:
+    image: minio/minio:latest
+    container_name: finsight-minio-prod
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data_prod:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  8. PROMETHEUS — Metrics Collection
+  # ═══════════════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: finsight-prometheus-prod
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_prod:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  #  9. GRAFANA — Monitoring Dashboards
+  # ═══════════════════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: finsight-grafana-prod
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-finsight2025}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data_prod:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - finsight_network
+
+  # ═══════════════════════════════════════════════════════════════
+  # 10. FLOWER — Celery Task Monitoring
+  # ═══════════════════════════════════════════════════════════════
+  flower:
+    image: mher/flower:2.0.1
+    container_name: finsight-flower
+    restart: unless-stopped
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_URL_PREFIX=/flower
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - finsight_network
+
+# ═══════════════════════════════════════════════════════════════
+#  NETWORKS
+# ═══════════════════════════════════════════════════════════════
+networks:
+  finsight_network:
+    driver: bridge
+
+# ═══════════════════════════════════════════════════════════════
+#  VOLUMES (separate from dev volumes to avoid conflicts)
+# ═══════════════════════════════════════════════════════════════
+volumes:
+  postgres_data_prod:
+  redis_data:
+  qdrant_data_prod:
+  minio_data_prod:
+  prometheus_data_prod:
+  grafana_data_prod:

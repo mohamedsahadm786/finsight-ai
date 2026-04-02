@@ -125,7 +125,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",   # Vite dev server (React)
         "http://localhost:3000",   # Alternative React port
-        "http://localhost:8000",   # Same origin
+        "http://localhost:8000",   # Same origin (dev)
+        "http://localhost",        # Nginx Docker (port 80)
+        "http://localhost:80",     # Nginx Docker explicit
     ],
     allow_credentials=True,        # Allow cookies (for refresh tokens)
     allow_methods=["*"],           # Allow all HTTP methods

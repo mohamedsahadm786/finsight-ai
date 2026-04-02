@@ -25,6 +25,10 @@ from backend.app.core.security import hash_password
 from backend.app.models.superadmin import SuperAdmin
 
 
+SUPERADMIN_EMAIL = "mohamedsahadm786@gmail.com"
+SUPERADMIN_PASSWORD = "Sahad@123"
+
+
 async def create_superadmin():
     settings = get_settings()
 
@@ -35,27 +39,27 @@ async def create_superadmin():
     async with async_session() as db:
         # Check if superadmin already exists
         result = await db.execute(
-            select(SuperAdmin).where(SuperAdmin.email == "admin@finsight.ai")
+            select(SuperAdmin).where(SuperAdmin.email == SUPERADMIN_EMAIL)
         )
         existing = result.scalar_one_or_none()
 
         if existing:
-            print("✓ Superadmin already exists: admin@finsight.ai")
+            print(f"✓ Superadmin already exists: {SUPERADMIN_EMAIL}")
             await engine.dispose()
             return
 
         # Create superadmin
         sa = SuperAdmin(
             id=uuid4(),
-            email="admin@finsight.ai",
-            password_hash=hash_password("SuperAdmin@2025!"),
+            email=SUPERADMIN_EMAIL,
+            password_hash=hash_password(SUPERADMIN_PASSWORD),
         )
         db.add(sa)
         await db.commit()
 
         print("✓ Superadmin created successfully!")
-        print("  Email:    admin@finsight.ai")
-        print("  Password: SuperAdmin@2025!")
+        print(f"  Email:    {SUPERADMIN_EMAIL}")
+        print(f"  Password: {SUPERADMIN_PASSWORD}")
         print()
         print("  ⚠️  Change this password immediately in production!")
 

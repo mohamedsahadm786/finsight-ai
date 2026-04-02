@@ -64,10 +64,7 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> bool:
     # Build the reset link
     # In production, this would be: https://app.finsight.ai/reset-password?token=...
     # In development, we use localhost
-    if settings.APP_ENV == "production":
-        base_url = "https://app.finsight.ai"
-    else:
-        base_url = "http://localhost:5173"  # React dev server
+    base_url = settings.FRONTEND_URL
 
     reset_link = f"{base_url}/reset-password?token={reset_token}"
 
@@ -134,10 +131,7 @@ async def send_user_invitation_email(
     """
     settings = get_settings()
 
-    if settings.APP_ENV == "production":
-        login_url = "https://app.finsight.ai/login"
-    else:
-        login_url = "http://localhost:5173/login"
+    login_url = f"{settings.FRONTEND_URL}/login"
 
     html_body = f"""
     <html>

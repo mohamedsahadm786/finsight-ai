@@ -1,0 +1,14 @@
+# Prometheus configuration for FinSight AI — Production
+# Scrapes metrics from the FastAPI container inside Docker network.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "finsight-api"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["fastapi:8000"]
+        labels:
+          environment: "production"
