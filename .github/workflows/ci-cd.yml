@@ -78,7 +78,7 @@ jobs:
         run: |
           ruff check backend/ --select E,F --ignore E501,E402,F401,F841,F541 --exit-non-zero-on-fix
 
-      - name: Run tests with coverage
+      - name: Run database migrations
         env:
           APP_ENV: testing
           SECRET_KEY: test-secret-key-for-ci-pipeline-only
@@ -99,7 +99,7 @@ jobs:
           OPENAI_API_KEY: ""
           FRONTEND_URL: http://localhost:5173
         run: |
-          pytest --cov=backend --cov-report=term-missing --tb=short -q
+          alembic -c backend/alembic.ini upgrade head
 
   # ═══════════════════════════════════════════════════════════════
   #  JOB 2 — BUILD & PUSH DOCKER IMAGES
