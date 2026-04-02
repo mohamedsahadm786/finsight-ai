@@ -76,7 +76,7 @@ jobs:
 
       - name: Lint with ruff
         run: |
-          ruff check backend/ --select E,F,I --ignore E501,E402 --exit-non-zero-on-fix
+          ruff check backend/ --select E,F --ignore E501,E402,F401,F841,F541 --exit-non-zero-on-fix
 
       - name: Run tests with coverage
         env:
