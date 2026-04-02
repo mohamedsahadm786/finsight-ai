@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finsight-worker
+  namespace: default
+  labels:
+    app: finsight-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finsight-worker
+  template:
+    metadata:
+      labels:
+        app: finsight-worker
+    spec:
+      containers:
+        - name: finsight-worker
+          image: finsight-ai-celery_worker:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: finsight-config
+            - secretRef:
+                name: finsight-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
