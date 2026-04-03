@@ -14,7 +14,7 @@
 
 **A production-grade, multi-tenant SaaS platform that transforms financial document analysis from a 4–6 hour manual process into an automated 5-minute AI-powered pipeline.**
 
-[🌐 Live Demo](http://65.0.114.221) · [📖 API Docs](http://65.0.114.221/api/docs) · [🎥 Video Demo](#-demo-video)
+[🌐 Live Demo](http://65.0.114.221) · [📖 API Docs](http://65.0.114.221/api/docs) 
 
 ---
 
@@ -770,7 +770,6 @@ Tests cover: authentication flows, RBAC enforcement, multi-tenant isolation, doc
 
 - 🎓 MSc & BSc in Statistics
 - 🔧 AI/ML Engineer specializing in NLP, LLMs, and production ML systems
-- 🌍 Based in Abu Dhabi, UAE
 - 📧 mohamedsahadm786@gmail.com
 - 💼 [LinkedIn](https://linkedin.com/in/mohamedsahad)
 - 💻 [GitHub](https://github.com/mohamedsahadm786)
@@ -779,14 +778,14 @@ Tests cover: authentication flows, RBAC enforcement, multi-tenant isolation, doc
 
 ## 📄 License
 
-This project is built for portfolio demonstration and educational purposes.
+This project represents a complete end-to-end AI system, covering LLaMA fine-tuning, system design, and containerized deployment using Docker.
 
 ---
 
 <div align="center">
 
-**Built with ❤️ and a lot of ☕ by Mohamed Sahad**
+**Designed and implemented by Mohamed Sahad M with a strong focus on scalability, modular architecture, and real-world applicability.**
 
-*From fine-tuning LLaMA to deploying 10 Docker containers — every line of code written from scratch.*
+*AI-assisted development tools were leveraged to enhance development efficiency, debugging, and optimization workflows.*
 
 </div>
