@@ -16,6 +16,11 @@
 
 [🌐 Live Demo](http://65.0.114.221) · [📖 API Docs](http://65.0.114.221/api/docs) 
 
+```
+Note: The deployed application may not always be accessible, as compute resources are managed dynamically to optimize costs.
+
+If you would like to access the live system, please feel free to reach out via the contact details provided below, and I will be happy to enable access.
+```
 ---
 
 <img src="https://img.shields.io/badge/⚡_Status-Live_on_AWS-success?style=for-the-badge" alt="Live Status"/>
