@@ -776,8 +776,8 @@ Tests cover: authentication flows, RBAC enforcement, multi-tenant isolation, doc
 - 🎓 MSc & BSc in Statistics
 - 🔧 AI/ML Engineer specializing in NLP, LLMs, and production ML systems
 - 📧 mohamedsahadm786@gmail.com
-- 💼 [LinkedIn](https://linkedin.com/in/mohamedsahad)
-- 💻 [GitHub](https://github.com/mohamedsahadm786)
+- 💼 [LinkedIn](https://www.linkedin.com/in/mohamed-sahad-m/)
+- 💻 [Portfolio](https://d5qb6gsuemmzn.cloudfront.net/)
 
 ---
 
